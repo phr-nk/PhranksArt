@@ -1,0 +1,131 @@
+@using Microsoft.AspNetCore.Components.Web
+@using PhranksArt.Models
+@using PhranksArt.Services
+@using Microsoft.JSInterop
+@inject JsonFileProductService ProductService
+@inject IJSRuntime JSRuntime
+
+<div class="card-columns">
+
+  @foreach (var product in ProductService.GetProducts())
+  {
+  <div class="card">
+    <!--  <div id="threejscontainer" class="card-img"></div> -->
+    <div  class="card-img" style="background-image: url('@product.Image');"></div>
+    <div class="card-body">
+      <h5 class="card-title">@product.Title</h5>
+      <h6 class="card-header-pills">Made by @product.Maker</h6>
+    </div>
+  </div>
+  <div class="card-footer">
+    <small class="text-muted">
+      <button @onclick="(e => SelectProduct(product.Id))" data-toggle="modal" data-target="#productModal" class="btn btn-primary">More Info</button>
+    </small>
+  </div>
+  }
+</div>
+
+@if (selectedProduct != null)
+{
+  <div  class="modal fade" id="productModal" tabindex="-1" role="dialog" aria-labelledby="productTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="productTitle">@selectedProduct.Title</h5>
+          <button type="button" @onclick="(e => Stop(selectedProduct.Id))"class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="card">
+            <div id="@selectedProduct.Id"  style="background-image: url('@selectedProduct.Image');" class="card-img"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <small class="text-muted">
+            <button @onclick="(e => Start(selectedProduct.Id, selectedProduct.ThreeDObject))"  class="btn btn-primary">View in 3D</button>
+          </small>
+          @if (voteCount == 0)
+          {
+            <span>Be the first to vote!</span>
+          }
+          else
+          {
+            <span>@voteCount @voteLabel</span>
+          }
+          @for (int i = 1; i < 6; i++)
+          {
+            var currentStar = i;
+            if (i <= currentRating)
+            {
+              <span class="fa fa-star checked" @onclick="(e => SubmitRating(currentStar))"></span>
+            }
+            else
+            {
+              <span class="fa fa-star" @onclick="(e => SubmitRating(currentStar))"></span>
+            }
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+
+@code {
+    Product selectedProduct;
+    string selectedProductId;
+
+    void initializeModal()
+    {
+      selectedProduct = ProductService.GetProducts().First(x => x.Id == x.Id);
+
+    }
+    void SelectProduct(string productId)
+    {
+      
+      selectedProductId = productId;
+      selectedProduct = ProductService.GetProducts().First(x => x.Id == productId);
+      GetCurrentRating();
+    }
+
+    int currentRating = 0;
+    int voteCount = 0;
+    string voteLabel;
+
+    void GetCurrentRating()
+    {
+      if (selectedProduct.Ratings == null)
+      {
+        currentRating = 0;
+        voteCount = 0;
+      }
+      else
+      {
+        voteCount = selectedProduct.Ratings.Count();
+        voteLabel = voteCount > 1 ? "Votes" : "Vote";
+        currentRating = selectedProduct.Ratings.Sum() / voteCount;
+      }
+
+      System.Console.WriteLine($"Current rating for {selectedProduct.Id}: {currentRating}");
+    }
+
+    void SubmitRating(int rating)
+    {
+      System.Console.WriteLine($"Rating received for {selectedProduct.Id}: {rating}");
+      ProductService.AddRating(selectedProductId, rating);
+      SelectProduct(selectedProductId);
+    }
+
+    public async Task Start(string id, string link)
+    {
+      await JSRuntime.InvokeVoidAsync("ThreeJSFunctions.load",id, link);
+    }
+    public async Task Stop(string id)
+    {
+      await JSRuntime.InvokeVoidAsync("ThreeJSFunctions.stop", id);
+    }
+
+}

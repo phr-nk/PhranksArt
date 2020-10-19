@@ -1,0 +1,16 @@
+@page
+@using PhranksArt.Components
+@model IndexModel
+@{
+  ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+  <h1 class="display-4">Check out some 3D sculptures!</h1>
+
+</div>
+
+@(await Html.RenderComponentAsync<ProductList>(RenderMode.ServerPrerendered))
+
+<script src="_framework/blazor.server.js"></script>
+
